@@ -10,13 +10,25 @@ Created and maintained by **Neirra**.
 
 ## Features
 
-- Simple project initialization
-- Automatic source file discovery
-- Automatic include directory registration
-- GitHub package support
-- `compile_commands.json` generation
-- Minimal TOML configuration
-- MinGW support
+* Simple project initialization
+* Automatic source file discovery
+* Automatic include directory registration
+* GitHub package support
+* Automatic `compile_commands.json` generation
+* Minimal TOML configuration
+* MinGW support
+
+---
+
+## Requirements
+
+Currently, **nimmake** supports:
+
+* Windows
+* x64 (64-bit)
+* MinGW
+
+Support for additional platforms and compilers is planned for future releases.
 
 ---
 
@@ -30,7 +42,13 @@ cd nimmake
 nimble build
 ```
 
-After building, place the executable in your system `PATH`.
+After building, add the directory containing `nimmake.exe` to your system **PATH**.
+
+Verify the installation by running:
+
+```bash
+nimmake help
+```
 
 ---
 
@@ -70,13 +88,13 @@ nimmake help
 
 ## Commands
 
-| Command | Description |
-|----------|-------------|
-| `init` | Generate a new `config.toml` |
-| `build` | Build the current project |
-| `run` | Run the generated executable |
+| Command | Description                      |
+| ------- | -------------------------------- |
+| `init`  | Generate a new `config.toml`     |
+| `build` | Build the current project        |
+| `run`   | Run the generated executable     |
 | `check` | Display the parsed configuration |
-| `help` | Show command usage |
+| `help`  | Show command usage               |
 
 ---
 
@@ -100,13 +118,13 @@ files = [
 compiler = "mingw"
 ```
 
-| Field | Description |
-|------|-------------|
-| `name` | Project name |
-| `desc` | Project description |
-| `version` | C++ language standard |
-| `files` | Entry source files |
-| `compiler` | Compiler to use |
+| Field      | Description           |
+| ---------- | --------------------- |
+| `name`     | Project name          |
+| `desc`     | Project description   |
+| `version`  | C++ language standard |
+| `files`    | Entry source files    |
+| `compiler` | Compiler to use       |
 
 ---
 
@@ -132,15 +150,15 @@ linkdir  = []
 linkname = []
 ```
 
-| Field | Description |
-|------|-------------|
-| `auto_regist` | Automatically discover source files and include directories |
-| `onlyMain` | Restrict executable entry points to files listed in `project.files` |
-| `skipDir` | Directories ignored during scanning |
-| `packages` | External GitHub packages |
-| `included` | Additional include directories |
-| `linkdir` | Additional linker search directories |
-| `linkname` | Libraries to link against |
+| Field         | Description                                                         |
+| ------------- | ------------------------------------------------------------------- |
+| `auto_regist` | Automatically discover source files and include directories         |
+| `onlyMain`    | Restrict executable entry points to files listed in `project.files` |
+| `skipDir`     | Directories ignored during scanning                                 |
+| `packages`    | External GitHub packages                                            |
+| `included`    | Additional include directories                                      |
+| `linkdir`     | Additional linker search directories                                |
+| `linkname`    | Libraries to link against                                           |
 
 ---
 
@@ -155,11 +173,11 @@ arc             = 64
 compile_command = true
 ```
 
-| Field | Description |
-|------|-------------|
-| `macro` | Additional compiler flags |
-| `build` | Build type |
-| `arc` | Target architecture |
+| Field             | Description                      |
+| ----------------- | -------------------------------- |
+| `macro`           | Additional compiler flags        |
+| `build`           | Build type                       |
+| `arc`             | Target architecture              |
 | `compile_command` | Generate `compile_commands.json` |
 
 ---
@@ -191,29 +209,32 @@ nimmake run
 
 ## Roadmap
 
-- Incremental builds
-- Parallel compilation
-- Additional compiler support
-- Package manager
-- Better dependency resolution
-- Plugin system
+* Incremental builds
+* Parallel compilation
+* Additional compiler support
+* Package manager
+* Better dependency resolution
+* Plugin system
 
 ---
 
 ## Philosophy
 
-`nimmake` is built around one idea:
+`nimmake` is built around one simple idea:
 
 > C++ project management should be straightforward.
 
-Instead of writing complex build scripts, developers should be able to describe their project with a small configuration file and let the build system handle the rest.
+Instead of writing complex build scripts, developers should be able to describe their project with a small configuration file while `nimmake` takes care of the rest.
+
+---
+
+## Credits
+
+* **Code** — Neirra
+* **Documentation** — ChatGPT
 
 ---
 
 ## License
 
 MIT License.
-
-## Credit
-docs by ChatGPT
-code by neirra
