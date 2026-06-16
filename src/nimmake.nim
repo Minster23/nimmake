@@ -1,43 +1,93 @@
+import std/os
+
 import configManager
 import builder
 
-import std/os
+const AppName = "nimmake"
+const AppDesc = "C/C++ project manager"
+const Author = "neirra"
 
-proc screen() =
+proc showBanner() =
   echo """
-  nimmake: C++/C project manager
-       =made by neirra=
+nimmake - C/C++ project manager
+made by neirra
 
-  help = for more
-  """
+Usage:
+  nimmake <command>
 
-proc help() =
-  echo """ this is help """
+Try:
+  nimmake help
+"""
+
+proc showHelp() =
+  echo """
+nimmake - C/C++ project manager
+
+Usage:
+  nimmake <command>
+
+Commands:
+  init       Create nimmake config
+  build      Build project
+  run        Run project output
+  check      Print current config
+  help       Show this help message
+
+Examples:
+  nimmake init
+  nimmake build
+  nimmake run
+  nimmake check
+"""
+
+proc cmdInit() =
+  configManager.init()
+  echo "Config created:"
+  echo configManager.read()
+
+proc cmdBuild() =
+  let cfg = configManager.read()
+  builder.build(cfg)
+
+proc cmdCheck() =
+  echo configManager.read()
+
+proc cmdRun() =
+  configManager.run()
 
 proc main() =
-  let arg = commandLineParams()
+  let args = commandLineParams()
 
-  if arg.len == 0:
-    screen()
-    echo "Currents: ", getCurrentDir()
+  if args.len == 0:
+    showBanner()
+    echo "Current directory: ", getCurrentDir()
     quit(0)
 
-  case arg[0]
-  of "help":
-    help()
-    quit(1)
+  case args[0]
+  of "help", "-h", "--help":
+    showHelp()
+    quit(0)
+
   of "init":
-    configManager.init()
-    echo configManager.read()
-    quit(1)
+    cmdInit()
+    quit(0)
+
   of "build":
-    builder.build(configManager.read())
-    quit(1)
+    cmdBuild()
+    quit(0)
+
   of "check":
-    echo configManager.read()
-    quit(1)
+    cmdCheck()
+    quit(0)
+
+  of "run":
+    cmdRun()
+    quit(0)
+
   else:
-    echo("Goodbye")
+    echo "Unknown command: ", args[0]
+    echo "Run `nimmake help` for available commands."
     quit(1)
 
-main()
+when isMainModule:
+  main()

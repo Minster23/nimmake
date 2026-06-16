@@ -1,25 +1,27 @@
 import parsetoml
 import std/strformat
 import os
+import std/osproc
 
 type projectConfig* = object
   name*, macroM*, version*, compiler*, buildType*: string
   arc*: int
-  source*, packages*, included*, linkname*, linkdir*: seq[string]
-  compile_command*: bool
+  source*, packages*, included*, linkname*, linkdir*, skipDir*: seq[string]
+  compile_command*, auto_regist*, onlyMain*: bool
 
 proc read*(): projectConfig =
   if fileExists("config.toml") == false:
     echo "Config not detected"
     return
-  let configFile = readFile("config.toml")
+  var configFile = readFile("config.toml")
 
-  let config = parsetoml.parseString(configFile)
+  var config = parsetoml.parseString(configFile)
   var sources: seq[string]
   var packages: seq[string]
   var included: seq[string]
   var linkname: seq[string]
   var linkdir: seq[string]
+  var skipDir: seq[string]
 
   if config["project"].hasKey("files"):
     for d in config["project"]["files"].arrayVal:
@@ -40,6 +42,9 @@ proc read*(): projectConfig =
   if config["library"].hasKey("linkdir"):
     for d in config["library"]["linkdir"].arrayVal:
       linkdir.add(d.getStr())
+  if config["library"].hasKey("skipDir"):
+    for d in config["library"]["skipDir"].arrayVal:
+      skipDir.add(d.getStr())
 
   var configN: projectConfig = projectConfig(
     # PROJECT
@@ -83,6 +88,15 @@ proc read*(): projectConfig =
         false,
 
     # LIBRARY
+    auto_regist:
+      if config["library"].hasKey("auto_regist"):
+        config["library"]["auto_regist"].getBool()
+      else:
+        false,
+    onlyMain: if config["library"].hasKey("onlyMain"):
+        config["library"]["onlyMain"].getBool()
+      else: false,
+    skipDir: skipDir,
     packages: packages,
     included: included,
     linkname: linkname,
@@ -105,7 +119,7 @@ proc init*() =
 [project]
 name = "{name}"
 desc = "{desc}"
-version = "C++17"
+version = "c++17"
 files = ["src/main.cpp"]
 compiler = "mingw"
 
@@ -126,3 +140,16 @@ compile_command = false
   # creating /src
   createDir("src")
   writeFile("src/main.cpp", "")
+
+proc run*() =
+  var result: int
+  var target: string
+  if dirExists("out") == false:
+    echo "build it first"
+    return
+
+  target = &"""out/{read().arc}/{read().name}"""
+  result = execCmd(target)
+  if result != 0:
+    echo "failed to run"
+    return

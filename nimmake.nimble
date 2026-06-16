@@ -13,4 +13,4 @@ binDir = "bin"
 
 requires "nim >= 2.2.10"
 requires "parsetoml"
-requires "illwill"
+requires "nimpretty_t"
