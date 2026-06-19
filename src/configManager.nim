@@ -6,7 +6,7 @@ import std/osproc
 type projectConfig* = object
   name*, macroM*, version*, compiler*, buildType*: string
   arc*: int
-  source*, packages*, included*, linkname*, linkdir*, skipDir*: seq[string]
+  source*, packages*, included*, linkname*, linkdir*, skipDir*, skipFile*: seq[string]
   compile_command*, auto_regist*, onlyMain*: bool
 
 proc read*(): projectConfig =
@@ -22,6 +22,7 @@ proc read*(): projectConfig =
   var linkname: seq[string]
   var linkdir: seq[string]
   var skipDir: seq[string]
+  var skipFile: seq[string]
 
   if config["project"].hasKey("files"):
     for d in config["project"]["files"].arrayVal:
@@ -45,6 +46,9 @@ proc read*(): projectConfig =
   if config["library"].hasKey("skipDir"):
     for d in config["library"]["skipDir"].arrayVal:
       skipDir.add(d.getStr())
+  if config["library"].hasKey("skipFile"):
+    for d in config["library"]["skipFile"].arrayVal:
+      skipFile.add(d.getStr())
 
   var configN: projectConfig = projectConfig(
     # PROJECT
@@ -97,6 +101,7 @@ proc read*(): projectConfig =
         config["library"]["onlyMain"].getBool()
       else: false,
     skipDir: skipDir,
+    skipFile: skipFile,
     packages: packages,
     included: included,
     linkname: linkname,

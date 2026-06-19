@@ -91,6 +91,10 @@ proc isCppSource(ext: string): bool =
 proc execptDir(ext: string, skipped: seq[string]): bool =
   return skipped.anyIt(ext.contains(it))
 
+proc execptFile(ext: string, skipped: seq[string]): bool =
+  return skipped.anyIt(ext.contains(it))
+
+
 proc auto_regist(cfg: projectConfig): regitRet =
   var cpp, hpp, h, dir: seq[string]
   let data: seq[string] = cfg.packages
@@ -99,9 +103,10 @@ proc auto_regist(cfg: projectConfig): regitRet =
     let m = getCurrentDir() & "/ext/" & $l[1] & "/"
     for d in walkDirRec(m):
       if execptDir(splitFile(d).dir, cfg.skipDir) == false:
-        if isCppSource(splitFile(d).ext):
-          echo "CPP: " & d
-          cpp.add(d)
+        if execptFile(splitFile(d).name, cfg.skipFile) == false:
+          if isCppSource(splitFile(d).ext):
+            echo "CPP: " & d
+            cpp.add(d)
 
     for d in walkDirRec(m, yieldFilter = {pcDir}):
       if execptDir(splitFile(d).dir, cfg.skipDir) == false:
@@ -111,43 +116,36 @@ proc auto_regist(cfg: projectConfig): regitRet =
   regitRet(cpp: cpp, dir: dir)
 
 proc makeObject(file, gcc, incl: string): string =
-  if dirExists("out/object") == false:
+  if not dirExists("out/object"):
     createDir("out/object")
 
-  var o = file.split("/")
-  var ter: string
-  if o.maxIndex() == 0:
-    ter = o[o.maxIndex()+1]
-  else:
-    ter = o.max()
-  var g = ter.replace(".cpp", ".o")
+  let fileName = extractFilename(file)
+  let (_, name, ext) = splitFile(fileName)
 
-  var p = &"""{gcc} -c {file} -o out/object/{g} {incl}"""
+  if not isCppSource(ext.toLowerAscii()):
+    return ""
 
-  let k = execCmd(p)
-  if k != 0:
-    echo (&"""FAILED MAKING OBJECT AT {file}""")
-    return
+  let objectFile = &"out/object/{name}.o"
+  let command = &"{gcc} -c {file} -o {objectFile} {incl}"
+  let exitCode = execCmd(command)
+
+  if exitCode != 0:
+    echo &"FAILED MAKING OBJECT AT {file}"
+    return ""
   else:
-    return &"""out/object/{g}"""
+    return objectFile
 
 proc fileValidator(file: string): bool =
-  var o = file.split("/")
-  var ter: string
-  if o.maxIndex() == 0:
-    ter = o[o.maxIndex()+1]
-  else:
-    ter = o.max()
-  var g = ter.replace(".cpp", ".o")
+  let obj = file.splitFile.name & ".o"
+  let target = fmt"out/object/{obj}"
 
-  let target = &"""out/object/{g}"""
-  let targetFile = target.getFileInfo()
-  let f = file.getFileInfo()
-
-  if targetFile.lastWriteTime < f.lastWriteTime:
+  if not fileExists(target):
     return false
-  else:
-    return true
+
+  let srcInfo = getFileInfo(file)
+  let objInfo = getFileInfo(target)
+
+  result = objInfo.lastWriteTime >= srcInfo.lastWriteTime
 
 
 proc mingwBuild(cfg: projectConfig) =
@@ -204,13 +202,19 @@ proc mingwBuild(cfg: projectConfig) =
   let output = &"""{location}/{cfg.name}"""
 
   for j in reg.cpp:
-    var p = j.replace("\\", "/")
-    #if fileValidator(p) == true:
-    #  continue
-    var t: string = makeObject(p, gpp, includeRed)
+    let p = j.replace("\\", "/")
+
+      # true = object masih baru, jadi tidak perlu compile ulang
+    if fileValidator(p):
+      let obj = p.splitFile.name & ".o"
+      obejctVar.add(fmt"out/object/{obj}")
+      continue
+
+    let t = makeObject(p, gpp, includeRed)
     echo t
-    obejctVar.add(&"""{t}""")
-    fileCount = fileCount + 1
+    obejctVar.add(t)
+    inc fileCount
+
 
   if cfg.compile_command:
     if obejctVar.len > 0:
