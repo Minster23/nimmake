@@ -9,7 +9,7 @@ const Author = "neirra"
 
 proc showBanner() =
   echo """
-nimmake - C/C++ project manager
+nimmake - C++ project manager
 made by neirra
 
 Usage:

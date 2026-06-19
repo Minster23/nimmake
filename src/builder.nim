@@ -49,25 +49,41 @@ proc auto_regist(cfg: projectConfig): regitRet =
     var l = p.split("/")
     let m = getCurrentDir() & "/ext/" & $l[1] & "/"
     for d in walkDirRec(m):
-      if execptDir(splitFile(d).dir, cfg.skipDir) == true:
-        echo "CPP: skipped dir"
-      else:
+      if execptDir(splitFile(d).dir, cfg.skipDir) == false:
         if isCppSource(splitFile(d).ext):
           echo "CPP: " & d
           cpp.add(d)
 
     for d in walkDirRec(m, yieldFilter = {pcDir}):
-      if execptDir(splitFile(d).dir, cfg.skipDir) == true:
-        echo "DIR: Skipped"
-      else:
+      if execptDir(splitFile(d).dir, cfg.skipDir) == false:
         echo "DIR: " & d
         dir.add(splitFile(d).dir)
 
   regitRet(cpp: cpp, dir: dir)
 
+proc makeObject(file, gcc, incl: string): string =
+  var o = file.split("/")
+  var ter: string
+  if o.maxIndex() == 0:
+    ter = o[o.maxIndex()+1]
+  else:
+    ter = o.max()
+  var g = ter.replace(".cpp", ".o")
+  var p = &"""{gcc} -c {file} -o out/object/{g} {incl}"""
+  if dirExists("out/object") == false:
+    createDir("out/object")
+  let k = execCmd(p)
+  if k != 0:
+    echo (&"""FAILED MAKING OBJECT AT {file}""")
+    return
+  else:
+    return &"""out/object/{g}"""
+
+
 proc mingwBuild(cfg: projectConfig) =
   let location = &"out/{cfg.arc}"
 
+  var obejctVar: seq[string]
   var includedR: seq[string]
   var linkName: seq[string]
   var linkDir: seq[string]
@@ -106,7 +122,6 @@ proc mingwBuild(cfg: projectConfig) =
     linkDir.add(&"""-L"{k}"""")
 
   let linkDirRed = linkDir.join(" ")
-
   for k in cfg.linkname:
     echo "Link name: " & k
     linkName.add(&"-l{k}")
@@ -121,7 +136,16 @@ proc mingwBuild(cfg: projectConfig) =
 
   let output = &"""{location}/{cfg.name}"""
 
-  var p = &""""{gpp}" -std={cfg.version} {files} """
+  for j in reg.cpp:
+    var p = j.replace("\\", "/")
+    var t: string = makeObject(p, gpp, includeRed)
+    echo t
+    obejctVar.add(&"""{t}""")
+
+
+  let objectVarRed = obejctVar.join(" ")
+
+  var p = &""""{gpp}" -std={cfg.version} {objectVarRed} """
 
   if cfg.macroM != "":
     p &= cfg.macroM & " "
