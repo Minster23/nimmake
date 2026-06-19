@@ -34,7 +34,6 @@ proc compile_commands(
 
   addInclude(includedR, mingwInclude)
 
-  # Fix clangd: tambahin C++ standard library include dari MSYS2/MinGW
   let cppRoot = mingwInclude / "c++"
   if dirExists(cppRoot):
     for kind, path in walkDir(cppRoot):
@@ -89,9 +88,6 @@ proc compile_commands(
 proc isCppSource(ext: string): bool =
   ext in [".c", ".cc", ".cpp", ".cxx"]
 
-proc ishppSource(ext: string): bool =
-  ext in [".hpp", ".h", ".hxx"]
-
 proc execptDir(ext: string, skipped: seq[string]): bool =
   return skipped.anyIt(ext.contains(it))
 
@@ -115,6 +111,9 @@ proc auto_regist(cfg: projectConfig): regitRet =
   regitRet(cpp: cpp, dir: dir)
 
 proc makeObject(file, gcc, incl: string): string =
+  if dirExists("out/object") == false:
+    createDir("out/object")
+
   var o = file.split("/")
   var ter: string
   if o.maxIndex() == 0:
@@ -122,9 +121,9 @@ proc makeObject(file, gcc, incl: string): string =
   else:
     ter = o.max()
   var g = ter.replace(".cpp", ".o")
+
   var p = &"""{gcc} -c {file} -o out/object/{g} {incl}"""
-  if dirExists("out/object") == false:
-    createDir("out/object")
+
   let k = execCmd(p)
   if k != 0:
     echo (&"""FAILED MAKING OBJECT AT {file}""")
@@ -176,6 +175,8 @@ proc mingwBuild(cfg: projectConfig) =
       if d notin reg.dir:
         reg.dir.add(d)
 
+  let files = reg.cpp.join(" ")
+
   for l in cfg.included:
     echo "Include: " & l
     includedR.add(&"""-I"{l}"""")
@@ -204,8 +205,8 @@ proc mingwBuild(cfg: projectConfig) =
 
   for j in reg.cpp:
     var p = j.replace("\\", "/")
-    if fileValidator(p) == true:
-      continue
+    #if fileValidator(p) == true:
+    #  continue
     var t: string = makeObject(p, gpp, includeRed)
     echo t
     obejctVar.add(&"""{t}""")
@@ -219,6 +220,10 @@ proc mingwBuild(cfg: projectConfig) =
   let objectVarRed = obejctVar.join(" ")
 
   var p = &""""{gpp}" -std={cfg.version} {objectVarRed} """
+
+  if fileExists("out/object/main.o") == false:
+    p = &""""{gpp}" -std={cfg.version} {files} """
+
 
   if cfg.macroM != "":
     p &= cfg.macroM & " "
