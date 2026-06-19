@@ -2,7 +2,7 @@
 
 *A lightweight C++ project manager written in Nim.*
 
-`nimmake` is a lightweight build tool designed to simplify modern C++ project management. It focuses on keeping projects easy to configure while providing automatic source discovery, dependency registration, and integration with development tools such as `clangd`.
+`nimmake` is a lightweight build system focused on making C++ projects simple to configure and build. It automatically discovers source files, registers include directories, downloads GitHub dependencies, and generates `compile_commands.json` for editor integration.
 
 Created and maintained by **Neirra**.
 
@@ -12,9 +12,12 @@ Created and maintained by **Neirra**.
 
 * Simple project initialization
 * Automatic source file discovery
+* Wildcard source support (`src/*.cpp`)
 * Automatic include directory registration
-* GitHub package support
+* Automatic object caching (incremental compilation)
 * Automatic `compile_commands.json` generation
+* GitHub package support
+* Configurable directory and file skipping
 * Minimal TOML configuration
 * MinGW support
 
@@ -22,19 +25,19 @@ Created and maintained by **Neirra**.
 
 ## Requirements
 
-Currently, **nimmake** supports:
+Currently supported:
 
 * Windows
 * x64 (64-bit)
-* MinGW
+* MinGW (MSYS2 recommended)
 
-Support for additional platforms and compilers is planned for future releases.
+Additional compilers and platforms are planned.
 
 ---
 
 ## Installation
 
-Clone the repository and build it using Nim.
+Clone the repository.
 
 ```bash
 git clone https://github.com/Minster23/nimmake.git
@@ -42,9 +45,9 @@ cd nimmake
 nimble build
 ```
 
-After building, add the directory containing `nimmake.exe` to your system **PATH**.
+Add the directory containing `nimmake.exe` to your system **PATH**.
 
-Verify the installation by running:
+Verify the installation:
 
 ```bash
 nimmake help
@@ -54,31 +57,31 @@ nimmake help
 
 ## Quick Start
 
-Create a new project.
+Create a project.
 
 ```bash
 nimmake init
 ```
 
-Build the project.
+Build.
 
 ```bash
 nimmake build
 ```
 
-Run the executable.
+Run.
 
 ```bash
 nimmake run
 ```
 
-Print the current configuration.
+Check parsed configuration.
 
 ```bash
 nimmake check
 ```
 
-Show available commands.
+Show help.
 
 ```bash
 nimmake help
@@ -88,90 +91,131 @@ nimmake help
 
 ## Commands
 
-| Command | Description                      |
-| ------- | -------------------------------- |
-| `init`  | Generate a new `config.toml`     |
-| `build` | Build the current project        |
-| `run`   | Run the generated executable     |
-| `check` | Display the parsed configuration |
-| `help`  | Show command usage               |
+| Command | Description                          |
+| ------- | ------------------------------------ |
+| `init`  | Generate `config.toml`               |
+| `build` | Build the project                    |
+| `run`   | Execute the generated application    |
+| `check` | Display parsed project configuration |
+| `help`  | Show command usage                   |
 
 ---
 
-## Configuration
+# Configuration
 
 Projects are configured using a single `config.toml`.
 
-### Project
+## Project
 
 ```toml
 [project]
-
-name     = "MyProject"
-desc     = ""
-version  = "c++17"
+name = "MyProject"
+desc = "Example project"
+version = "c++20"
 
 files = [
-    "src/main.cpp"
+    "src/*.cpp"
 ]
 
 compiler = "mingw"
 ```
 
-| Field      | Description           |
-| ---------- | --------------------- |
-| `name`     | Project name          |
-| `desc`     | Project description   |
-| `version`  | C++ language standard |
-| `files`    | Entry source files    |
-| `compiler` | Compiler to use       |
+### Project Fields
+
+| Field      | Description                        |
+| ---------- | ---------------------------------- |
+| `name`     | Project name                       |
+| `desc`     | Project description                |
+| `version`  | C++ standard (`c++11` ... `c++23`) |
+| `files`    | Source files or wildcard patterns  |
+| `compiler` | Compiler backend                   |
+
+Examples:
+
+```toml
+files = [
+    "src/main.cpp"
+]
+```
+
+```toml
+files = [
+    "src/*.cpp"
+]
+```
 
 ---
 
-### Library
+## Library
 
 ```toml
 [library]
 
 auto_regist = true
-onlyMain    = true
-
-skipDir = [
-    "tests",
-    "examples"
-]
+onlyMain = true
 
 packages = [
-    "nlohmann/json"
+    "ocornut/imgui",
+    "fmtlib/fmt"
 ]
 
-included = []
-linkdir  = []
-linkname = []
+included = [
+    "thirdparty/include"
+]
+
+linkdir = [
+    "thirdparty/lib"
+]
+
+linkname = [
+    "glfw3",
+    "opengl32"
+]
+
+skipDir = [
+    ".git",
+    ".github",
+    "docs",
+    "examples",
+    "misc",
+    "tests"
+]
+
+skipFile = [
+    "imgui_impl_dx9.cpp",
+    "imgui_impl_dx10.cpp",
+    "imgui_impl_dx11.cpp",
+    "imgui_impl_dx12.cpp"
+]
 ```
 
-| Field         | Description                                                         |
-| ------------- | ------------------------------------------------------------------- |
-| `auto_regist` | Automatically discover source files and include directories         |
-| `onlyMain`    | Restrict executable entry points to files listed in `project.files` |
-| `skipDir`     | Directories ignored during scanning                                 |
-| `packages`    | External GitHub packages                                            |
-| `included`    | Additional include directories                                      |
-| `linkdir`     | Additional linker search directories                                |
-| `linkname`    | Libraries to link against                                           |
+### Library Fields
+
+| Field         | Description                                                               |
+| ------------- | ------------------------------------------------------------------------- |
+| `auto_regist` | Automatically discover source files and include directories from packages |
+| `onlyMain`    | Only compile executable entry files listed in `project.files`             |
+| `packages`    | GitHub repositories downloaded into `ext/`                                |
+| `included`    | Additional include directories                                            |
+| `linkdir`     | Additional library search directories                                     |
+| `linkname`    | Libraries passed to the linker                                            |
+| `skipDir`     | Directories ignored during automatic scanning                             |
+| `skipFile`    | Files ignored during automatic scanning                                   |
 
 ---
 
-### Custom
+## Custom
 
 ```toml
 [costum]
 
-macro           = ""
-build           = "binary"
-arc             = 64
+macro = ""
+build = "binary"
+arc = 64
 compile_command = true
 ```
+
+### Custom Fields
 
 | Field             | Description                      |
 | ----------------- | -------------------------------- |
@@ -182,24 +226,27 @@ compile_command = true
 
 ---
 
-## Example Project
+# Example
 
 ```
 MyProject/
 ├── src/
-│   └── main.cpp
+│   ├── main.cpp
+│   ├── app.cpp
+│   └── app.h
 ├── ext/
+├── out/
 ├── config.toml
 └── nimmake.exe
 ```
 
-Build the project.
+Build:
 
 ```bash
 nimmake build
 ```
 
-Run the executable.
+Run:
 
 ```bash
 nimmake run
@@ -207,24 +254,68 @@ nimmake run
 
 ---
 
+## Incremental Compilation
+
+`nimmake` automatically checks timestamps of object files.
+
+Only modified source files are recompiled.
+
+Example:
+
+```
+src/main.cpp  ---> out/object/main.o
+src/app.cpp   ---> out/object/app.o
+```
+
+If only `app.cpp` changes:
+
+```
+Compile:
+✓ app.cpp
+
+Skip:
+✓ main.cpp
+```
+
+The final executable is then linked using all object files.
+
+---
+
+## GitHub Packages
+
+Packages are downloaded automatically into the `ext/` directory.
+
+```toml
+packages = [
+    "ocornut/imgui",
+    "glfw/glfw"
+]
+```
+
+---
+
 ## Roadmap
 
-* Incremental builds
 * Parallel compilation
-* Additional compiler support
+* MSVC support
+* Clang support
+* Linux support
+* macOS support
+* Static library target
+* Shared library target
 * Package manager
-* Better dependency resolution
 * Plugin system
+* Better dependency resolution
 
 ---
 
 ## Philosophy
 
-`nimmake` is built around one simple idea:
+`nimmake` is designed around one idea:
 
-> C++ project management should be straightforward.
+> C++ projects should be easy to build.
 
-Instead of writing complex build scripts, developers should be able to describe their project with a small configuration file while `nimmake` takes care of the rest.
+Instead of maintaining large build scripts, developers describe their project using a small TOML file while `nimmake` handles source discovery, dependency registration, incremental compilation, and editor integration automatically.
 
 ---
 
@@ -232,9 +323,3 @@ Instead of writing complex build scripts, developers should be able to describe 
 
 * **Code** — Neirra
 * **Documentation** — ChatGPT
-
----
-
-## License
-
-MIT License.
