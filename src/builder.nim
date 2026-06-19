@@ -1,5 +1,5 @@
 import configManager
-import std/[os, osproc, strutils, strformat, sequtils, json]
+import std/[os, osproc, strutils, strformat, sequtils, json, times]
 import package
 
 type regitRet = object
@@ -79,6 +79,24 @@ proc makeObject(file, gcc, incl: string): string =
   else:
     return &"""out/object/{g}"""
 
+proc fileValidator(file: string): bool =
+  var o = file.split("/")
+  var ter: string
+  if o.maxIndex() == 0:
+    ter = o[o.maxIndex()+1]
+  else:
+    ter = o.max()
+  var g = ter.replace(".cpp", ".o")
+
+  let target = &"""out/object/{g}"""
+  let targetFile = target.getFileInfo()
+  let f = file.getFileInfo()
+
+  if targetFile.lastWriteTime < f.lastWriteTime:
+    return false
+  else:
+    return true
+
 
 proc mingwBuild(cfg: projectConfig) =
   let location = &"out/{cfg.arc}"
@@ -87,6 +105,7 @@ proc mingwBuild(cfg: projectConfig) =
   var includedR: seq[string]
   var linkName: seq[string]
   var linkDir: seq[string]
+  var fileCount: int
 
   createDir(location)
   getPackage(cfg.packages)
@@ -103,9 +122,6 @@ proc mingwBuild(cfg: projectConfig) =
     for d in autoReg.dir:
       if d notin reg.dir:
         reg.dir.add(d)
-
-
-  let files = reg.cpp.mapIt(&""""{it}"""").join(" ")
 
   for l in cfg.included:
     echo "Include: " & l
@@ -138,9 +154,12 @@ proc mingwBuild(cfg: projectConfig) =
 
   for j in reg.cpp:
     var p = j.replace("\\", "/")
+    if fileValidator(p) == true:
+      continue
     var t: string = makeObject(p, gpp, includeRed)
     echo t
     obejctVar.add(&"""{t}""")
+    fileCount = fileCount + 1
 
 
   let objectVarRed = obejctVar.join(" ")
@@ -152,13 +171,13 @@ proc mingwBuild(cfg: projectConfig) =
 
   p &= &"""{includeRed} {linkDirRed} {linkNameRed} -o "{output}""""
 
-  echo p
+  if fileCount != 0:
+    echo p
+    let code = execCmd(p)
 
-  let code = execCmd(p)
-
-  if code != 0:
-    echo "build failed"
-    return
+    if code != 0:
+      echo "build failed"
+      return
 
   echo "build complete in " & location
 
