@@ -160,8 +160,7 @@ proc mingwBuild(cfg: projectConfig) =
   createDir(location)
   getPackage(cfg.packages)
 
-  var reg = regitRet(cpp: cfg.source, dir: @[])
-
+  var reg = regitRet(cpp: @[], dir: @[])
   if cfg.auto_regist:
     let autoReg = auto_regist(cfg)
 
@@ -172,6 +171,20 @@ proc mingwBuild(cfg: projectConfig) =
     for d in autoReg.dir:
       if d notin reg.dir:
         reg.dir.add(d)
+
+  for f in cfg.source:
+    if "*" in f:
+      let dir = f.parentDir
+      let ext = f.splitFile.ext
+
+      for path in walkDirRec(dir):
+        if path.endsWith(ext):
+          if path notin reg.cpp:
+            reg.cpp.add(path)
+    else:
+      if f notin reg.cpp:
+        reg.cpp.add(f)
+
 
   let files = reg.cpp.join(" ")
 
@@ -204,7 +217,6 @@ proc mingwBuild(cfg: projectConfig) =
   for j in reg.cpp:
     let p = j.replace("\\", "/")
 
-      # true = object masih baru, jadi tidak perlu compile ulang
     if fileValidator(p):
       let obj = p.splitFile.name & ".o"
       obejctVar.add(fmt"out/object/{obj}")
