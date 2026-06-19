@@ -5,31 +5,84 @@ import package
 type regitRet = object
   cpp, dir: seq[string]
 
-proc compile_commands(g: projectConfig, reg: regitRet) =
+proc normPath(p: string): string =
+  p.replace("\\", "/")
+
+proc addInclude(includes: var seq[string], path: string) =
+  let p = normPath(path)
+  if p.len > 0 and dirExists(p):
+    let flag = &"""-I"{p}""""
+    if flag notin includes:
+      includes.add(flag)
+
+proc compile_commands(
+  cfg: projectConfig,
+  reg: regitRet,
+  objFile: seq[string],
+  gpp: string
+) =
   var arr = newJArray()
   var includedR: seq[string]
 
-  for l in g.included:
-    includedR.add(&"""-I"{l}"""")
+  let cwd = normPath(getCurrentDir())
+  let compiler = normPath(gpp)
+
+  var mingwInclude = compiler
+  if mingwInclude.contains("/bin/"):
+    mingwInclude = mingwInclude.replace("/bin/g++.exe", "/include")
+    mingwInclude = mingwInclude.replace("/bin/g++", "/include")
+
+  addInclude(includedR, mingwInclude)
+
+  # Fix clangd: tambahin C++ standard library include dari MSYS2/MinGW
+  let cppRoot = mingwInclude / "c++"
+  if dirExists(cppRoot):
+    for kind, path in walkDir(cppRoot):
+      if kind == pcDir:
+        let cppVer = normPath(path)
+        addInclude(includedR, cppVer)
+        addInclude(includedR, cppVer / "x86_64-w64-mingw32")
+        break
+
+  for l in cfg.included:
+    addInclude(includedR, l)
 
   for d in reg.dir:
-    includedR.add(&"""-I"{d}"""")
+    addInclude(includedR, d)
 
   let includeRed = includedR.join(" ")
 
-  let gppRaw = execProcess("where g++").strip().splitLines()[0]
-  let gpp = gppRaw.replace("\\", "/")
+  for i, f in reg.cpp:
+    let src = normPath(f)
+    let absSrc =
+      if src.isAbsolute:
+        src
+      else:
+        cwd / src
 
-  for f in reg.cpp:
-    var cmd = &""""{gpp}" -std={g.version} """
+    var cmd = &""""{compiler}" -std={cfg.version} """
 
-    if g.macroM != "":
-      cmd &= g.macroM & " "
+    if cfg.macroM.len > 0:
+      cmd &= cfg.macroM & " "
 
     cmd &= includeRed & " "
-    cmd &= "-c " & &""""{f}""""
+    cmd &= &"""-c "{normPath(absSrc)}" """
 
-    arr.add(%*{"directory": getCurrentDir(), "command": cmd, "file": f})
+    if objFile.len > i:
+      let obj = normPath(objFile[i])
+      let absObj =
+        if obj.isAbsolute:
+          obj
+        else:
+          cwd / obj
+
+      cmd &= &"""-o "{normPath(absObj)}""""
+
+    arr.add(%*{
+      "directory": cwd,
+      "command": cmd,
+      "file": normPath(absSrc)
+    })
 
   writeFile("compile_commands.json", pretty(arr))
 
@@ -144,9 +197,6 @@ proc mingwBuild(cfg: projectConfig) =
 
   let linkNameRed = linkName.join(" ")
 
-  if cfg.compile_command:
-    compile_commands(cfg, reg)
-
   let gppRaw = execProcess("where g++").strip().splitLines()[0]
   let gpp = gppRaw.replace("\\", "/")
 
@@ -160,6 +210,10 @@ proc mingwBuild(cfg: projectConfig) =
     echo t
     obejctVar.add(&"""{t}""")
     fileCount = fileCount + 1
+
+  if cfg.compile_command:
+    if obejctVar.len > 0:
+      compile_commands(cfg, reg, obejctVar, gpp)
 
 
   let objectVarRed = obejctVar.join(" ")
